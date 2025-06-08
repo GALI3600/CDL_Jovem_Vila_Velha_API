@@ -18,6 +18,27 @@ export interface SystemHealthStatus {
   overall: 'online' | 'offline';
 }
 
+export interface CsvUploadResponse {
+  message: string;
+  imported_count: number;
+  total_rows: number;
+  warnings?: string[];
+  failed_count?: number;
+}
+
+export interface CsvUploadError {
+  detail: {
+    message?: string;
+    errors?: string[];
+    valid_rows?: number;
+    total_rows?: number;
+  } | Array<{
+    loc: string[];
+    msg: string;
+    type: string;
+  }>;
+}
+
 export class ApiService {
   static async checkBackendHealth(): Promise<{ status: 'online' | 'offline'; error?: string }> {
     try {
@@ -111,5 +132,47 @@ export class ApiService {
       status: systemHealth.overall,
       service: 'CDL Jovem Vila Velha System'
     };
+  }
+
+  static async uploadCsv(file: File): Promise<CsvUploadResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${API_BASE_URL}/users/upload-csv`, {
+        method: 'POST',
+        body: formData,
+        // Don't set Content-Type header - let the browser set it with boundary for multipart/form-data
+      });
+
+      if (!response.ok) {
+        const errorData: CsvUploadError = await response.json();
+        
+        // Handle different error formats
+        if (Array.isArray(errorData.detail)) {
+          // Validation error format
+          const validationErrors = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`);
+          throw new Error(`Validation error: ${validationErrors.join(', ')}`);
+        } else if (errorData.detail && typeof errorData.detail === 'object' && 'message' in errorData.detail) {
+          // Custom error format with validation details
+          const detail = errorData.detail;
+          let errorMessage = detail.message || 'Upload failed';
+          if (detail.errors && detail.errors.length > 0) {
+            errorMessage += '\n\nErros encontrados:\n' + detail.errors.join('\n');
+          }
+          throw new Error(errorMessage);
+        } else {
+          throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('CSV upload failed:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to upload CSV file');
+    }
   }
 } 
