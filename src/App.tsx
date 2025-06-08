@@ -56,15 +56,15 @@ function App() {
   const csvHeaders = csvData && csvData.length > 0 ? csvData[0] : [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Header />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Main content grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           
           {/* Left column - File upload and action panel */}
-          <div className="xl:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-4 sm:space-y-6">
             <FileUpload
               onFileSelect={handleFileSelect}
               selectedFile={selectedFile}
@@ -77,8 +77,8 @@ function App() {
             />
           </div>
           
-          {/* Right column - Message composer (spans 2 columns on xl screens) */}
-          <div className="xl:col-span-2">
+          {/* Right column - Message composer (spans 2 columns on lg screens) */}
+          <div className="lg:col-span-2">
             <MessageComposer
               csvHeaders={csvHeaders}
               message={message}
@@ -88,9 +88,9 @@ function App() {
         </div>
         
         {/* Footer */}
-        <footer className="mt-12 pt-8 border-t border-gray-200">
+        <footer className="mt-8 sm:mt-16 pt-6 sm:pt-8 border-t border-[#003f88] border-opacity-20">
           <div className="text-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-xs sm:text-sm text-gray-600 font-medium">
               © 2025 CDL Jovem Vila Velha - Sistema de Campanhas WhatsApp
             </p>
           </div>

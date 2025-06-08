@@ -70,38 +70,38 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile, csv
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Lista de Contatos</h2>
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-6">
+      <h2 className="text-lg sm:text-xl font-bold text-[#003f88] mb-4 sm:mb-6">Lista de Contatos</h2>
       
       {!selectedFile ? (
         <div
-          className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
+          className={`border-2 border-dashed rounded-xl p-4 sm:p-6 text-center transition-all duration-300 ${
             isDragOver
-              ? 'border-[#003f88] bg-blue-50'
+              ? 'border-[#003f88] bg-[#003f88] bg-opacity-5 scale-105'
               : uploadStatus === 'error'
-              ? 'border-red-300 bg-red-50'
+              ? 'border-red-400 bg-red-50'
               : 'border-gray-300 hover:border-[#003f88] hover:bg-gray-50'
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex flex-col items-center space-y-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-              uploadStatus === 'error' ? 'bg-red-100' : 'bg-gray-100'
+          <div className="space-y-4">
+            <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto ${
+              uploadStatus === 'error' ? 'bg-red-100' : 'bg-[#003f88] bg-opacity-10'
             }`}>
               {uploadStatus === 'error' ? (
-                <AlertCircle className="w-6 h-6 text-red-500" />
+                <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-500" />
               ) : (
-                <Upload className="w-6 h-6 text-gray-400" />
+                <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-[#003f88]" />
               )}
             </div>
             
-            <div>
-              <p className="font-medium text-gray-900 mb-1">
+            <div className="space-y-2">
+              <p className="font-semibold text-gray-900 text-sm sm:text-base">
                 {uploadStatus === 'error' ? 'Arquivo inválido' : 'Upload do arquivo CSV'}
               </p>
-              <p className="text-sm text-gray-500 mb-3">
+              <p className="text-xs sm:text-sm text-gray-600">
                 {uploadStatus === 'error' 
                   ? 'Selecione um arquivo CSV válido'
                   : 'Arraste aqui ou clique para selecionar'
@@ -109,7 +109,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile, csv
               </p>
             </div>
             
-            <label className="inline-flex items-center px-4 py-2 bg-[#003f88] text-white text-sm font-medium rounded-lg hover:bg-[#002c5f] transition-colors cursor-pointer">
+            <label className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-[#003f88] text-white text-sm font-semibold rounded-xl hover:bg-[#002c5f] transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
               <input
                 type="file"
                 accept=".csv"
@@ -119,45 +119,45 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, selectedFile, csv
               Selecionar Arquivo
             </label>
             
-            <p className="text-xs text-gray-400">Apenas arquivos .csv</p>
+            <p className="text-xs text-gray-500">Apenas arquivos .csv</p>
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* File info card */}
-          <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between p-3 sm:p-4 bg-[#2cab4f] bg-opacity-10 border border-[#2cab4f] border-opacity-30 rounded-xl">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-[#2cab4f]" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#2cab4f] bg-opacity-20 rounded-xl flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-[#2cab4f]" />
               </div>
               <div>
-                <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-semibold text-gray-900 text-sm sm:text-base truncate max-w-32 sm:max-w-none">{selectedFile.name}</p>
+                <p className="text-xs sm:text-sm text-gray-600">
                   {formatFileSize(selectedFile.size)}
                 </p>
               </div>
             </div>
             <button
               onClick={removeFile}
-              className="p-2 hover:bg-green-100 rounded-full transition-colors"
+              className="p-2 hover:bg-[#2cab4f] hover:bg-opacity-20 rounded-xl transition-colors"
               title="Remover arquivo"
             >
-              <X className="w-4 h-4 text-gray-500" />
+              <X className="w-4 h-4 text-gray-600" />
             </button>
           </div>
           
           {/* Quick stats */}
           {csvData && csvData.length > 0 && (
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200">
               <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">
+                <Users className="w-4 h-4 text-[#003f88]" />
+                <span className="text-sm font-semibold text-[#003f88]">
                   {csvData.length - 1} contatos encontrados
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <File className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-500">
+                <File className="w-4 h-4 text-gray-600" />
+                <span className="text-xs sm:text-sm text-gray-600">
                   {csvData[0]?.length || 0} colunas
                 </span>
               </div>
