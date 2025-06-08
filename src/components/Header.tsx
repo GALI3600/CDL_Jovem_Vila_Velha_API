@@ -4,33 +4,20 @@ const Header: React.FC = () => {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-32">
           
-          {/* Left side - Logo and Text */}
-          <div className="flex items-center space-x-3">
-            {/* CDL Logo - Maior */}
-            <div className="flex-shrink-0">
-              <img 
-                src="/CDL Icon.png" 
-                alt="CDL Logo" 
-                className="w-16 h-16 object-contain"
-                onError={(e) => {
-                  // Fallback if logo doesn't load
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            </div>
-            
-            {/* Stacked Text - Mais próximo da logo */}
-            <div className="flex flex-col justify-center">
-              <h1 className="text-3xl font-bold text-[#003f88] leading-tight">
-                CDL
-              </h1>
-              <h2 className="text-xl font-semibold text-[#2cab4f] leading-tight">
-                Jovem Vila Velha
-              </h2>
-            </div>
+          {/* Left side - Complete CDL Logo */}
+          <div className="flex items-center">
+            <img 
+              src="/cdl_jovem_vila_velha_transparente.png" 
+              alt="CDL Jovem Vila Velha" 
+              className="h-24 object-contain"
+              onError={(e) => {
+                // Fallback if logo doesn't load
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
           </div>
 
           {/* Right side - System status */}
