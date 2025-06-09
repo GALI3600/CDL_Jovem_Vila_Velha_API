@@ -225,53 +225,59 @@ async def send_message(message_request: SendTextMessageRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error sending message: {str(e)}")
 
+def normalize_phone_number(number: str) -> str:
+    """
+    Normalize phone number to include country code.
+    Rules:
+    - Remove any non-digit characters
+    - If number starts with 55, keep as is
+    - If number starts with 27 (ES DDD), add 55
+    - If number doesn't start with 55 or 27, add 55
+    """
+    # Remove non-digit characters
+    number = ''.join(filter(str.isdigit, number))
+    
+    if number.startswith('55'):
+        return number
+    elif number.startswith('27'):
+        return f'55{number}'
+    else:
+        return f'55{number}'
+
 @app.post("/messages/send-bulk", status_code=200)
 async def send_bulk_messages(bulk_request: SendBulkTextMessageRequest):
-    """Send WhatsApp text messages to multiple numbers"""
-    
     try:
-        if not bulk_request.numbers:
-            raise HTTPException(
-                status_code=400,
-                detail="No numbers provided"
-            )
+        # Normalize all phone numbers
+        normalized_numbers = [normalize_phone_number(num) for num in bulk_request.numbers]
         
         url = f"{EVOLUTION_URL}/message/sendText/{EVOLUTION_INSTANCE_NAME}"
         headers = {
-            "apikey": EVOLUTION_API_KEY,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "apikey": EVOLUTION_API_KEY
         }
         
-        successful_sends = []
-        failed_sends = []
+        successful = []
+        failed = []
         
         async with httpx.AsyncClient() as client:
-            for number in bulk_request.numbers:
+            for number in normalized_numbers:
                 try:
                     payload = {
-                        "number": number.strip(),
+                        "number": number,
                         "text": bulk_request.text
                     }
                     
-                    response = await client.post(url, headers=headers, json=payload)
+                    response = await client.post(url, json=payload, headers=headers)
+                    response.raise_for_status()
                     
-                    if response.status_code in [200, 201]:
-                        response_data = response.json()
-                        successful_sends.append({
-                            "number": number,
-                            "status": "sent",
-                            "message_id": response_data.get("key", {}).get("id")
-                        })
-                    else:
-                        failed_sends.append({
-                            "number": number,
-                            "error": f"API Error: {response.status_code}"
-                        })
-                        
-                except Exception as e:
-                    failed_sends.append({
+                    successful.append({
                         "number": number,
-                        "error": str(e)
+                        "status": "sent"
+                    })
+                except Exception as e:
+                    failed.append({
+                        "number": number,
+                        "error": f"API Error: {str(e)}"
                     })
         
         return {
@@ -279,17 +285,13 @@ async def send_bulk_messages(bulk_request: SendBulkTextMessageRequest):
             "message": "Bulk message operation completed",
             "summary": {
                 "total_numbers": len(bulk_request.numbers),
-                "successful_sends": len(successful_sends),
-                "failed_sends": len(failed_sends)
+                "successful_sends": len(successful),
+                "failed_sends": len(failed)
             },
             "results": {
-                "successful": successful_sends,
-                "failed": failed_sends
+                "successful": successful,
+                "failed": failed
             }
         }
-        
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error sending bulk messages: {str(e)}"
-        ) 
+        raise HTTPException(status_code=500, detail=f"Error sending message: {str(e)}") 
