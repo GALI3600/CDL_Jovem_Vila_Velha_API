@@ -9,13 +9,27 @@ import io
 import httpx
 from pydantic import BaseModel
 
-from app.models import UserCreate, UserResponse
-from app.database import get_all_users, create_user
+from app.models import (
+    UserCreate, UserResponse,
+    FormCreate, FormResponse,
+    LeadCreate, LeadResponse,
+    SendLeadMessagesRequest, SendFormLeadMessagesRequest
+)
+from app.database import (
+    get_all_users, create_user,
+    get_all_forms, get_form_by_id, create_form,
+    get_all_leads, get_leads_by_form_id, get_leads_by_ids, create_lead
+)
 
 # Evolution API Configuration
-EVOLUTION_URL = "https://evolution-victor.namastex.ai"
-EVOLUTION_INSTANCE_NAME = "CDLVilaVelha"
-EVOLUTION_API_KEY = "97D331C8C57A-45C9-9AA1-AF9FCAB5783E"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+EVOLUTION_URL = os.getenv("EVOLUTION_URL", "https://evolution-victor.namastex.ai")
+EVOLUTION_INSTANCE_NAME = os.getenv("EVOLUTION_INSTANCE_NAME", "CDLVilaVelha")
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
 
 # Pydantic models for messaging
 class SendTextMessageRequest(BaseModel):
@@ -182,6 +196,244 @@ async def upload_users_csv(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="File encoding error. Please ensure CSV is UTF-8 encoded")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+# ========================
+# FORMS ENDPOINTS
+# ========================
+
+@app.get("/forms", response_model=List[FormResponse])
+async def get_forms():
+    """Get all forms from database"""
+    forms = await get_all_forms()
+    return forms
+
+
+@app.post("/forms", status_code=201, response_model=FormResponse)
+async def create_new_form(form_data: FormCreate):
+    """Create a new form"""
+    try:
+        form_dict = form_data.model_dump()
+        created_form = await create_form(form_dict)
+        
+        if created_form:
+            # Return first item from the list if it's a list
+            if isinstance(created_form, list) and created_form:
+                return created_form[0]
+            return created_form
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create form")
+            
+    except Exception as e:
+        error_message = str(e)
+        if "já existe" in error_message:
+            raise HTTPException(status_code=409, detail=error_message)
+        else:
+            raise HTTPException(status_code=500, detail=f"Error creating form: {error_message}")
+
+
+@app.get("/forms/{form_id}", response_model=FormResponse)
+async def get_form(form_id: UUID):
+    """Get a specific form by ID"""
+    form = await get_form_by_id(form_id)
+    if not form:
+        raise HTTPException(status_code=404, detail="Form not found")
+    return form
+
+
+@app.get("/forms/{form_id}/leads", response_model=List[LeadResponse])
+async def get_form_leads(form_id: UUID):
+    """Get all leads for a specific form"""
+    # First check if form exists
+    form = await get_form_by_id(form_id)
+    if not form:
+        raise HTTPException(status_code=404, detail="Form not found")
+    
+    leads = await get_leads_by_form_id(form_id)
+    return leads
+
+
+# ========================
+# LEADS ENDPOINTS
+# ========================
+
+@app.get("/leads", response_model=List[LeadResponse])
+async def get_leads():
+    """Get all leads from database"""
+    leads = await get_all_leads()
+    return leads
+
+
+@app.post("/leads", status_code=201, response_model=LeadResponse)
+async def create_new_lead(lead_data: LeadCreate):
+    """Create a new lead"""
+    try:
+        # Validate form exists
+        form = await get_form_by_id(lead_data.form_id)
+        if not form:
+            raise HTTPException(status_code=404, detail="Form not found")
+        
+        lead_dict = lead_data.model_dump()
+        created_lead = await create_lead(lead_dict)
+        
+        if created_lead:
+            # Return first item from the list if it's a list
+            if isinstance(created_lead, list) and created_lead:
+                return created_lead[0]
+            return created_lead
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create lead")
+            
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
+    except Exception as e:
+        error_message = str(e)
+        if "já existe" in error_message:
+            raise HTTPException(status_code=409, detail=error_message)
+        else:
+            raise HTTPException(status_code=500, detail=f"Error creating lead: {error_message}")
+
+
+@app.post("/leads/send-messages", status_code=200)
+async def send_messages_to_leads(message_request: SendLeadMessagesRequest):
+    """Send WhatsApp messages to specific leads"""
+    try:
+        # Get leads data
+        leads = await get_leads_by_ids(message_request.lead_ids)
+        if not leads:
+            raise HTTPException(status_code=404, detail="No leads found with provided IDs")
+        
+        # Extract phone numbers and normalize them
+        phone_numbers = [lead['phone'] for lead in leads]
+        normalized_numbers = [normalize_phone_number(num) for num in phone_numbers]
+        
+        # Use existing bulk messaging functionality
+        url = f"{EVOLUTION_URL}/message/sendText/{EVOLUTION_INSTANCE_NAME}"
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": EVOLUTION_API_KEY
+        }
+        
+        successful = []
+        failed = []
+        
+        async with httpx.AsyncClient() as client:
+            for i, number in enumerate(normalized_numbers):
+                try:
+                    payload = {
+                        "number": number,
+                        "text": message_request.text
+                    }
+                    
+                    response = await client.post(url, json=payload, headers=headers)
+                    response.raise_for_status()
+                    
+                    successful.append({
+                        "lead_id": str(message_request.lead_ids[i]),
+                        "number": number,
+                        "status": "sent"
+                    })
+                except Exception as e:
+                    failed.append({
+                        "lead_id": str(message_request.lead_ids[i]),
+                        "number": number,
+                        "error": f"API Error: {str(e)}"
+                    })
+        
+        return {
+            "success": True,
+            "message": "Lead messaging operation completed",
+            "summary": {
+                "total_leads": len(message_request.lead_ids),
+                "successful_sends": len(successful),
+                "failed_sends": len(failed)
+            },
+            "results": {
+                "successful": successful,
+                "failed": failed
+            }
+        }
+        
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error sending messages to leads: {str(e)}")
+
+
+@app.post("/forms/{form_id}/send-messages", status_code=200)
+async def send_messages_to_form_leads(form_id: UUID, message_request: SendFormLeadMessagesRequest):
+    """Send WhatsApp messages to all leads of a specific form"""
+    try:
+        # Check if form exists
+        form = await get_form_by_id(form_id)
+        if not form:
+            raise HTTPException(status_code=404, detail="Form not found")
+        
+        # Get all leads for the form
+        leads = await get_leads_by_form_id(form_id)
+        if not leads:
+            raise HTTPException(status_code=404, detail="No leads found for this form")
+        
+        # Extract phone numbers and normalize them
+        phone_numbers = [lead['phone'] for lead in leads]
+        normalized_numbers = [normalize_phone_number(num) for num in phone_numbers]
+        
+        # Use existing bulk messaging functionality
+        url = f"{EVOLUTION_URL}/message/sendText/{EVOLUTION_INSTANCE_NAME}"
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": EVOLUTION_API_KEY
+        }
+        
+        successful = []
+        failed = []
+        
+        async with httpx.AsyncClient() as client:
+            for i, number in enumerate(normalized_numbers):
+                try:
+                    payload = {
+                        "number": number,
+                        "text": message_request.text
+                    }
+                    
+                    response = await client.post(url, json=payload, headers=headers)
+                    response.raise_for_status()
+                    
+                    successful.append({
+                        "lead_id": str(leads[i]['id']),
+                        "number": number,
+                        "status": "sent"
+                    })
+                except Exception as e:
+                    failed.append({
+                        "lead_id": str(leads[i]['id']),
+                        "number": number,
+                        "error": f"API Error: {str(e)}"
+                    })
+        
+        return {
+            "success": True,
+            "message": f"Form lead messaging operation completed for form: {form['title']}",
+            "form_info": {
+                "form_id": str(form_id),
+                "form_title": form['title']
+            },
+            "summary": {
+                "total_leads": len(leads),
+                "successful_sends": len(successful),
+                "failed_sends": len(failed)
+            },
+            "results": {
+                "successful": successful,
+                "failed": failed
+            }
+        }
+        
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error sending messages to form leads: {str(e)}")
+
 
 @app.post("/messages/send", status_code=200)
 async def send_message(message_request: SendTextMessageRequest):

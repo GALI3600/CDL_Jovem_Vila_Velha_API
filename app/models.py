@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
@@ -27,4 +27,59 @@ class UserResponse(UserBase):
     updated_at: datetime
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+
+# Forms Models
+class FormBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+
+
+class FormCreate(FormBase):
+    pass
+
+
+class FormResponse(FormBase):
+    id: UUID
+    google_form_id: Optional[str] = None
+    google_form_url: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Leads Models
+class LeadBase(BaseModel):
+    first_name: str
+    phone: str
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+
+
+class LeadCreate(LeadBase):
+    form_id: UUID
+    responses: Optional[Dict[str, Any]] = {}
+
+
+class LeadResponse(LeadBase):
+    id: UUID
+    form_id: UUID
+    responses: Optional[Dict[str, Any]] = {}
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Messaging Models for Leads
+class SendLeadMessagesRequest(BaseModel):
+    lead_ids: list[UUID]
+    text: str
+
+
+class SendFormLeadMessagesRequest(BaseModel):
+    form_id: UUID
+    text: str 
